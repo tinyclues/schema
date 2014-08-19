@@ -183,12 +183,12 @@ def test_use_error_handling():
     try:
         Use(ve).validate('x')
     except SchemaError as e:
-        assert e.autos == ["ve('x') raised ValueError()"]
+        assert e.autos == ["ve('x') raised ValueError() (None)"]
         assert e.errors == [None]
     try:
         Use(ve, error='should not raise').validate('x')
     except SchemaError as e:
-        assert e.autos == ["ve('x') raised ValueError()"]
+        assert e.autos == ["ve('x') raised ValueError() (None)"]
         assert e.errors == ['should not raise']
     try:
         Use(se).validate('x')
@@ -260,12 +260,13 @@ def test_schema_error_handling():
     try:
         Schema(Use(ve)).validate('x')
     except SchemaError as e:
-        assert e.autos == [None, "ve('x') raised ValueError()"]
+        assert e.autos == [None, "ve('x') raised ValueError() (None)"]
         assert e.errors == [None, None]
+
     try:
         Schema(Use(ve), error='should not raise').validate('x')
     except SchemaError as e:
-        assert e.autos == [None, "ve('x') raised ValueError()"]
+        assert e.autos == [None, "ve('x') raised ValueError() (None)"]
         assert e.errors == ['should not raise', None]
     try:
         Schema(Use(se)).validate('x')
@@ -342,3 +343,11 @@ def test_issue_9_prioritized_key_comparison_in_dicts():
     assert s.validate(data) == data
     data = {'ID': 10, 'FILE': None}
     assert s.validate(data) == data
+
+
+def test_issue_add_dict_key_in_error():
+    try:
+        Schema({'attr1': Use(int)}).validate({'attr1': 'str'})
+    except SchemaError as e:
+        assert 'attr1' in e.autos[-1]
+        assert e.errors == [None, None]
