@@ -34,19 +34,19 @@ class And(object):
         return '%s(%s)' % (self.__class__.__name__,
                            ', '.join(repr(a) for a in self._args))
 
-    def validate(self, data):
+    def validate(self, data, dict_key=None):
         for s in [Schema(s, error=self._error) for s in self._args]:
-            data = s.validate(data)
+            data = s.validate(data, dict_key=dict_key)
         return data
 
 
 class Or(And):
 
-    def validate(self, data):
+    def validate(self, data, dict_key=None):
         x = SchemaError([], [])
         for s in [Schema(s, error=self._error) for s in self._args]:
             try:
-                return s.validate(data)
+                return s.validate(data, dict_key)
             except SchemaError as _x:
                 x = _x
         raise SchemaError(['%r did not validate %r' % (self, data)] + x.autos,
@@ -63,14 +63,14 @@ class Use(object):
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self._callable)
 
-    def validate(self, data):
+    def validate(self, data, dict_key=None):
         try:
             return self._callable(data)
         except SchemaError as x:
             raise SchemaError([None] + x.autos, [self._error] + x.errors)
         except BaseException as x:
             f = self._callable.__name__
-            raise SchemaError('%s(%r) raised %r' % (f, data, x), self._error)
+            raise SchemaError('%s(%r) raised %r (%r)' % (f, data, x, dict_key), self._error)
 
 
 def priority(s):
@@ -101,7 +101,7 @@ class Schema(object):
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__, self._schema)
 
-    def validate(self, data):
+    def validate(self, data, dict_key=None):
         s = self._schema
         e = self._error
         if type(s) in (list, tuple, set, frozenset):
@@ -125,7 +125,7 @@ class Schema(object):
                         pass
                     else:
                         try:
-                            nvalue = Schema(svalue, error=e).validate(value)
+                            nvalue = Schema(svalue, error=e).validate(value, dict_key=skey)
                         except SchemaError as _x:
                             x = _x
                             raise
@@ -151,7 +151,7 @@ class Schema(object):
             return new
         if hasattr(s, 'validate'):
             try:
-                return s.validate(data)
+                return s.validate(data, dict_key=dict_key)
             except SchemaError as x:
                 raise SchemaError([None] + x.autos, [e] + x.errors)
             except BaseException as x:
@@ -161,7 +161,7 @@ class Schema(object):
             if isinstance(data, s):
                 return data
             else:
-                raise SchemaError('%r should be instance of %r' % (data, s), e)
+                raise SchemaError('%r should be instance of %r (%r)' % (data, s, dict_key), e)
         if callable(s):
             f = s.__name__
             try:
